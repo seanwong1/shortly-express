@@ -5,6 +5,7 @@ const partials = require('express-partials');
 const Auth = require('./middleware/auth');
 const models = require('./models');
 
+
 const app = express();
 
 app.set('views', `${__dirname}/views`);
@@ -14,19 +15,21 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, '../public')));
 
+const CookieParser = require('./middleware/cookieParser');
+app.use(CookieParser);
 
 
-app.get('/', 
+app.get('/',
 (req, res) => {
   res.render('index');
 });
 
-app.get('/create', 
+app.get('/create',
 (req, res) => {
   res.render('index');
 });
 
-app.get('/links', 
+app.get('/links',
 (req, res, next) => {
   models.Links.getAll()
     .then(links => {
@@ -37,7 +40,7 @@ app.get('/links',
     });
 });
 
-app.post('/links', 
+app.post('/links',
 (req, res, next) => {
   var url = req.body.url;
   if (!models.Links.isValidUrl(url)) {
@@ -77,7 +80,43 @@ app.post('/links',
 // Write your authentication routes here
 /************************************************************/
 
+app.post('/signup', (req, res, next) => {
+  var user = req.body.username;
+  var pass = req.body.password;
 
+  return models.Users.create({username: user, password: pass})
+    .then(() => {
+      res.redirect('/');
+      res.end();
+    })
+    .catch((err) => {
+      console.log(err);
+      res.redirect('/signup');
+      res.end();
+    });
+});
+
+app.post('/login', (req, res, next) => {
+  var user = req.body.username;
+  var pass = req.body.password;
+  return models.Users.get({username: user})
+    .then((user) => {
+      return models.Users.compare(pass, user.password, user.salt);
+    })
+    .then((result) => {
+      if (result) {
+        res.redirect('/');
+        res.end();
+      } else {
+        res.redirect('/login');
+        res.end();
+      }
+    })
+    .catch(() => {
+      res.redirect('/login');
+      res.end();
+    });
+});
 
 /************************************************************/
 // Handle the code parameter route last - if all other routes fail
